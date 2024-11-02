@@ -8,6 +8,7 @@ import (
 	"github.com/Scalingo/sclng-backend-test-v1/src/controllers"
 	"github.com/Scalingo/sclng-backend-test-v1/src/repositories"
 	"github.com/Scalingo/sclng-backend-test-v1/src/usecases"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -25,6 +26,10 @@ func main() {
 }
 
 func initDependencies() *http.ServeMux {
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Warning: .env file not found")
+	}
+
 	mux := http.NewServeMux()
 
 	rg := repositories.NewGitHubRepository()
