@@ -113,25 +113,22 @@ func (ru *repositoryUseCase) ValidateQuery(q string) (language string, err error
 type ValidatorFunc func(qualifier, value string) error
 
 // validateFilters verifies the filters in the query
-func validateFilters(q string) (language string, error error) {
+func validateFilters(q string) (language string, err error) {
 	validators := map[string]ValidatorFunc{
 		"size":      validateNumberOperator,
 		"topics":    validateNumberOperator,
 		"stars":     validateNumberOperator,
 		"followers": validateNumberOperator,
 		"forks":     validateNumberOperator,
-
-		"license":  validateEqualOperator,
-		"language": validateEqualOperator,
-
-		"created": validateDateOperator,
-		"pushed":  validateDateOperator,
+		"license":   validateEqualOperator,
+		"language":  validateEqualOperator,
+		"created":   validateDateOperator,
+		"pushed":    validateDateOperator,
 	}
 
-	parts := strings.Fields(q)
 	hasLanguageFilter := false
 
-	for _, part := range parts {
+	for _, part := range strings.Fields(q) {
 		if strings.Count(part, ":") > 1 {
 			return "", fmt.Errorf("invalid filter format in '%s': use '+' to separate filters, not ':'", part)
 		}
@@ -141,23 +138,23 @@ func validateFilters(q string) (language string, error error) {
 			continue
 		}
 
+		validator, exists := validators[qualifier]
+		if !exists {
+			return "", fmt.Errorf("unknown qualifier: %s", qualifier)
+		}
+
+		if err := validator(qualifier, value); err != nil {
+			return "", err
+		}
+
 		if qualifier == "language" {
 			hasLanguageFilter = true
 			language = value
 		}
-
-		validator, exists := validators[qualifier]
-		if !exists {
-			return language, fmt.Errorf("unknown qualifier: %s", qualifier)
-		}
-
-		if err := validator(qualifier, value); err != nil {
-			return language, err
-		}
 	}
 
 	if !hasLanguageFilter {
-		return language, fmt.Errorf("no language filter set, please provide one")
+		return "", fmt.Errorf("no language filter set, please provide one")
 	}
 
 	return language, nil
