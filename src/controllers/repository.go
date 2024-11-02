@@ -19,9 +19,10 @@ func NewRepositoryController(ru usecases.RepositoryUseCase) *RepositoryControlle
 
 func (rc *RepositoryController) SearchRepositories(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
-	if query == "" {
+
+	if err := rc.ru.ValidateQuery(query); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "query parameter 'q' is required"})
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
