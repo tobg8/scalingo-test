@@ -56,18 +56,18 @@ The query parameters are:
 - *license* - MIT||GPL||BSD
 - *language* - javascript || python || go || rust
 
-- *created* - 2023-01-01..2024-01-01||>=2024-01-01||<=2024-01-01||:2024-01-01
+- *created* - >=2024-01-01||<=2024-01-01||:2024-01-01
 - *pushed* - >=2024-01-01||<=2024-01-01||:2024-01-01
 
 ## Examples
 
-- search public repositories with the word `scalingo` (in name, description or topics) and the language `javascript` and the size of the repository is between 1 and 10 Ko
+- search public repositories with the word `scalingo` (in name, description or topics) and the language `javascript` and the size of the repository is between 1 and 10 KB
   - <http://localhost:5000/repos?q=scalingo+language:javascript+size:1..10>
-- search public repositories with the language `javascript` and the size of the repository is between 1 and 10 Ko
-  - <http://localhost:5000/repos?q=language:javascript+size:1..10>
-- search public repositories with the language `go` and the size of the repository is between 1 and 10 Ko and the number of stars is greater or equal to 10
-  - <http://localhost:5000/repos?q=language:go+size:1..10+stars:>=10>
-- search public repositories with the language `rust` and the size of the repository is between 1 and 10 Ko and the number of stars is greater or equal to 10 and the number of followers is greater or equal to 100
+- search public repositories with the language `javascript` and the size of the repository is smaller or equal to 100 KB
+  - <http://localhost:5000/repos?q=language:javascript+size:<=100>
+- search public repositories with the language `go` and the followers is 10 and stars is greater than 10
+  - <http://localhost:5000/repos?q=language:go+followers:10+stars:>10>
+- search public repositories with the language `rust` and the size of the repository is between 1 and 10 KB and the number of stars is greater or equal to 10 and the number of followers is greater or equal to 100
   - <http://localhost:5000/repos?q=language:rust+size:1..10+stars:>=10+followers:>=100>
 
 ## Project structure
