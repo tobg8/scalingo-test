@@ -20,3 +20,5 @@ type Owner struct {
 	AvatarURL string `json:"avatar_url"`
 	HTMLURL   string `json:"html_url"`
 }
+
+type Languages map[string]int

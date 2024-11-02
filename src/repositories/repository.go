@@ -25,35 +25,52 @@ func NewGitHubRepository() GitHubRepository {
 	}
 }
 
-func (r *githubRepository) SearchRepositories(query string) (*models.RepositorySearchResponse, error) {
-	endpoint := fmt.Sprintf("%s/search/repositories?q=%s", r.baseURL, url.QueryEscape(query))
-
+// doRequest is a helper function that handles HTTP request
+func (gr *githubRepository) doRequest(endpoint string, result interface{}) error {
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error creating request: %w", err)
+		return fmt.Errorf("error creating request: %w", err)
 	}
 
-	// recommended by the github api documentation
+	// Add GitHub API headers
 	req.Header.Add("Accept", "application/vnd.github+json")
 	req.Header.Add("X-GitHub-Api-Version", "2022-11-28")
 
-	resp, err := r.httpClient.Do(req)
+	resp, err := gr.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error executing request: %w", err)
+		return fmt.Errorf("error executing request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		// happens only because we do not verify the value of certain parameters that needs
-		// strict equality (license, language...)
-		// or issue with accessing the Github API
-		return nil, fmt.Errorf("something is wrong with your request, please double license or language")
+		return fmt.Errorf("error with request, status: %d", resp.StatusCode)
 	}
 
+	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+		return fmt.Errorf("error decoding response: %w", err)
+	}
+
+	return nil
+}
+
+func (gr *githubRepository) SearchRepositories(query string) (*models.RepositorySearchResponse, error) {
+	endpoint := fmt.Sprintf("%s/search/repositories?q=%s", gr.baseURL, url.QueryEscape(query))
+
 	var result models.RepositorySearchResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("error decoding response: %w", err)
+	if err := gr.doRequest(endpoint, &result); err != nil {
+		return nil, err
 	}
 
 	return &result, nil
+}
+
+func (gr *githubRepository) GetLanguages(repoFullName string) (models.Languages, error) {
+	endpoint := fmt.Sprintf("%s/repos/%s/languages", gr.baseURL, repoFullName)
+
+	languages := make(models.Languages)
+	if err := gr.doRequest(endpoint, &languages); err != nil {
+		return nil, err
+	}
+
+	return languages, nil
 }
