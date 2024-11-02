@@ -70,10 +70,16 @@ func validateFilters(q string) error {
 	}
 
 	parts := strings.Fields(q)
+	hasLanguageFilter := false
+
 	for _, part := range parts {
 		qualifier, value, found := strings.Cut(part, ":")
 		if !found {
 			continue
+		}
+
+		if qualifier == "language" {
+			hasLanguageFilter = true
 		}
 
 		validator, exists := validators[qualifier]
@@ -84,6 +90,10 @@ func validateFilters(q string) error {
 		if err := validator(qualifier, value); err != nil {
 			return err
 		}
+	}
+
+	if !hasLanguageFilter {
+		return fmt.Errorf("no language filter set, please provide one")
 	}
 
 	return nil
