@@ -73,7 +73,6 @@ func (ru *repositoryUseCase) SearchRepositories(q string, language string) (*mod
 			// If the repository has the requested language (useless i think it has to but just in case)
 			if len(filteredLanguages) > 0 {
 				repo.Languages = filteredLanguages
-
 				mu.Lock()
 				clientRepos = append(clientRepos, repo)
 				mu.Unlock()
@@ -91,6 +90,7 @@ func (ru *repositoryUseCase) SearchRepositories(q string, language string) (*mod
 
 	return &models.RepositorySearchResponse{
 		TotalCount:        repos.TotalCount,
+		Count:             len(clientRepos),
 		IncompleteResults: repos.IncompleteResults,
 		Items:             clientRepos,
 	}, nil

@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   web:
     build: .
@@ -6,5 +6,7 @@ services:
       - ./:/go/src/github.com/Scalingo/sclng-backend-test-v1
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     command: reflex -r '\.go$$' -s -- sh -c 'go build -buildvcs=false && ./sclng-backend-test-v1'
     stop_signal: SIGKILL

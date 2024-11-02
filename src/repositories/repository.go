@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/Scalingo/sclng-backend-test-v1/src/models"
 )
@@ -36,6 +37,7 @@ func (gr *githubRepository) doRequest(endpoint string, result interface{}) error
 	// Add GitHub API headers
 	req.Header.Add("Accept", "application/vnd.github+json")
 	req.Header.Add("X-GitHub-Api-Version", "2022-11-28")
+	req.Header.Add("Authorization", "Bearer "+os.Getenv("GITHUB_TOKEN"))
 
 	resp, err := gr.httpClient.Do(req)
 	if err != nil {

@@ -2,6 +2,7 @@ package models
 
 type RepositorySearchResponse struct {
 	TotalCount        int          `json:"total_count"`
+	Count             int          `json:"count"`
 	IncompleteResults bool         `json:"incomplete_results"`
 	Items             []Repository `json:"items"`
 }
