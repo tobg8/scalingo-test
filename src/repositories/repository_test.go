@@ -1,10 +1,13 @@
 package repositories
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Scalingo/sclng-backend-test-v1/src/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,75 +17,236 @@ func TestNewGitHubRepository(t *testing.T) {
 
 	gr, ok := repo.(*githubRepository)
 	assert.True(t, ok)
-
 	assert.Equal(t, "https://api.github.com", gr.baseURL)
-
 	assert.NotNil(t, gr.httpClient)
 }
 
+type testCase struct {
+	endpoint       string
+	queryParam     string
+	mockResponse   string
+	mockStatusCode int
+	mockServerFunc func(*testing.T, testCase, http.ResponseWriter, *http.Request)
+	wantError      assert.ErrorAssertionFunc
+}
+
+func setupTestServer(t *testing.T, tt testCase) (*httptest.Server, *githubRepository) {
+	if tt.mockServerFunc != nil {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tt.mockServerFunc(t, tt, w, r)
+		}))
+		return server, &githubRepository{
+			baseURL:    server.URL,
+			httpClient: server.Client(),
+		}
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "application/vnd.github+json", r.Header.Get("Accept"))
+		assert.Equal(t, "2022-11-28", r.Header.Get("X-GitHub-Api-Version"))
+		assert.Equal(t, tt.endpoint, r.URL.Path)
+
+		w.WriteHeader(tt.mockStatusCode)
+		fmt.Fprintln(w, tt.mockResponse)
+	}))
+
+	return server, &githubRepository{
+		baseURL:    server.URL,
+		httpClient: server.Client(),
+	}
+}
+
 func TestSearchRepositories(t *testing.T) {
-	tests := map[string]struct {
-		name           string
-		query          string
-		mockResponse   string
-		mockStatusCode int
-		wantError      assert.ErrorAssertionFunc
-	}{
+	tests := map[string]testCase{
 		"nominal": {
-			query: "golang",
+			endpoint:   "/search/repositories",
+			queryParam: "golang",
 			mockResponse: `{
 				"total_count": 1,
 				"incomplete_results": false,
 				"items": [{
 					"id": 22,
-					"node_id": "azezaeeza",
-					"name": "scalingo-test",
 					"full_name": "scalingo/scalingo-test",
 					"description": "",
 					"html_url": "https://github.com/octocat/Hello-World",
 					"owner": {
-						"login": "octocat",
-						"id": 1,
-						"node_id": "MDQ6VXNlcjE=",
-						"avatar_url": "https://github.com/images/error/octocat_happy.gif",
-						"html_url": "https://github.com/octocat"
+						"login": "octocat"
 					}
 				}]
 			}`,
 			mockStatusCode: http.StatusOK,
-			wantError:      assert.NoError,
+			mockServerFunc: func(t *testing.T, tc testCase, w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "application/vnd.github+json", r.Header.Get("Accept"))
+				assert.Equal(t, "2022-11-28", r.Header.Get("X-GitHub-Api-Version"))
+				assert.Equal(t, tc.endpoint, r.URL.Path)
+				assert.Equal(t, tc.queryParam, r.URL.Query().Get("q"))
+				w.WriteHeader(tc.mockStatusCode)
+				fmt.Fprintln(w, tc.mockResponse)
+			},
+			wantError: assert.NoError,
 		},
 		"api error": {
-			query:          "golang",
+			endpoint:       "/search/repositories",
+			queryParam:     "golang",
 			mockResponse:   `{"message": "API rate limit exceeded"}`,
 			mockStatusCode: http.StatusForbidden,
 			wantError:      assert.Error,
 		},
 		"empty query": {
-			query:          "",
+			endpoint:       "/search/repositories",
+			queryParam:     "",
 			mockResponse:   `{"message": "Validation Failed"}`,
 			mockStatusCode: http.StatusUnprocessableEntity,
 			wantError:      assert.Error,
 		},
+		"invalid json response": {
+			endpoint:       "/search/repositories",
+			queryParam:     "golang",
+			mockResponse:   `{invalid json}`,
+			mockStatusCode: http.StatusOK,
+			wantError:      assert.Error,
+		},
+		"network error": {
+			endpoint:   "/search/repositories",
+			queryParam: "golang",
+			wantError:  assert.Error,
+			mockServerFunc: func(t *testing.T, tc testCase, w http.ResponseWriter, r *http.Request) {
+				panic("network error")
+			},
+		},
+		"invalid url": {
+			endpoint:   "/search/repositories",
+			queryParam: "golang",
+			wantError:  assert.Error,
+			mockServerFunc: func(t *testing.T, tc testCase, w http.ResponseWriter, r *http.Request) {
+				repo := &githubRepository{
+					baseURL:    "://invalid-url",
+					httpClient: &http.Client{},
+				}
+				_, err := repo.SearchRepositories(tc.queryParam)
+				assert.Error(t, err)
+			},
+		},
 	}
 
-	for n, tt := range tests {
-		t.Run(n, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, "application/vnd.github+json", r.Header.Get("Accept"))
-				assert.Equal(t, "2022-11-28", r.Header.Get("X-GitHub-Api-Version"))
-				w.WriteHeader(tt.mockStatusCode)
-				w.Write([]byte(tt.mockResponse))
-			}))
-			defer server.Close()
-
-			repo := &githubRepository{
-				baseURL:    server.URL,
-				httpClient: server.Client(),
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if name == "invalid url" {
+				repo := &githubRepository{
+					baseURL:    "://invalid-url",
+					httpClient: &http.Client{},
+				}
+				_, err := repo.SearchRepositories(tt.queryParam)
+				tt.wantError(t, err)
+				return
 			}
 
-			_, err := repo.SearchRepositories(tt.query)
+			server, repo := setupTestServer(t, tt)
+			defer server.Close()
+
+			result, err := repo.SearchRepositories(tt.queryParam)
 			tt.wantError(t, err)
+
+			if tt.mockStatusCode == http.StatusOK && err == nil {
+				assert.NotNil(t, result)
+				var expected models.RepositorySearchResponse
+				assert.NoError(t, json.Unmarshal([]byte(tt.mockResponse), &expected))
+				assert.Equal(t, expected.TotalCount, result.TotalCount)
+				assert.Equal(t, expected.IncompleteResults, result.IncompleteResults)
+				assert.Equal(t, len(expected.Items), len(result.Items))
+
+				if len(result.Items) > 0 {
+					assert.Equal(t, expected.Items[0].FullName, result.Items[0].FullName)
+					assert.Equal(t, expected.Items[0].Description, result.Items[0].Description)
+					assert.Equal(t, expected.Items[0].HTMLURL, result.Items[0].HTMLURL)
+					assert.Equal(t, expected.Items[0].Owner.Login, result.Items[0].Owner.Login)
+				}
+			}
+		})
+	}
+}
+
+func TestGetLanguages(t *testing.T) {
+	tests := map[string]testCase{
+		"nominal": {
+			endpoint:   "/repos/scalingo/scalingo-test/languages",
+			queryParam: "scalingo/scalingo-test",
+			mockResponse: `{
+				"Go": 123456,
+				"JavaScript": 89012,
+				"Python": 45678
+			}`,
+			mockStatusCode: http.StatusOK,
+			wantError:      assert.NoError,
+		},
+		"repository not found": {
+			endpoint:       "/repos/scalingo/not-exists/languages",
+			queryParam:     "scalingo/not-exists",
+			mockResponse:   `{"message": "Not Found"}`,
+			mockStatusCode: http.StatusNotFound,
+			wantError:      assert.Error,
+		},
+		"api error": {
+			endpoint:       "/repos/scalingo/scalingo-test/languages",
+			queryParam:     "scalingo/scalingo-test",
+			mockResponse:   `{"message": "API rate limit exceeded"}`,
+			mockStatusCode: http.StatusForbidden,
+			wantError:      assert.Error,
+		},
+		"invalid json response": {
+			endpoint:       "/repos/scalingo/scalingo-test/languages",
+			queryParam:     "scalingo/scalingo-test",
+			mockResponse:   `{invalid json}`,
+			mockStatusCode: http.StatusOK,
+			wantError:      assert.Error,
+		},
+		"network error": {
+			endpoint:   "/repos/scalingo/scalingo-test/languages",
+			queryParam: "scalingo/scalingo-test",
+			wantError:  assert.Error,
+			mockServerFunc: func(t *testing.T, tc testCase, w http.ResponseWriter, r *http.Request) {
+				panic("network error")
+			},
+		},
+		"invalid url": {
+			endpoint:   "/repos/scalingo/scalingo-test/languages",
+			queryParam: "scalingo/scalingo-test",
+			wantError:  assert.Error,
+			mockServerFunc: func(t *testing.T, tc testCase, w http.ResponseWriter, r *http.Request) {
+				repo := &githubRepository{
+					baseURL:    "://invalid-url",
+					httpClient: &http.Client{},
+				}
+				_, err := repo.GetLanguages(tc.queryParam)
+				assert.Error(t, err)
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			if name == "invalid url" {
+				repo := &githubRepository{
+					baseURL:    "://invalid-url",
+					httpClient: &http.Client{},
+				}
+				_, err := repo.GetLanguages(tt.queryParam)
+				tt.wantError(t, err)
+				return
+			}
+
+			server, repo := setupTestServer(t, tt)
+			defer server.Close()
+
+			languages, err := repo.GetLanguages(tt.queryParam)
+			tt.wantError(t, err)
+
+			if tt.mockStatusCode == http.StatusOK && err == nil {
+				assert.NotNil(t, languages)
+				var expected models.Languages
+				assert.NoError(t, json.Unmarshal([]byte(tt.mockResponse), &expected))
+				assert.Equal(t, expected, languages)
+			}
 		})
 	}
 }
