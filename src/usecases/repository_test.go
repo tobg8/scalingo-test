@@ -92,7 +92,7 @@ func TestValidateQuery(t *testing.T) {
 		wantError assert.ErrorAssertionFunc
 	}{
 		"valid simple query": {
-			query:     "tetris",
+			query:     "tetris language:go",
 			wantError: assert.NoError,
 		},
 		"valid complex query": {
@@ -128,15 +128,15 @@ func TestValidateFilters(t *testing.T) {
 		wantError assert.ErrorAssertionFunc
 	}{
 		"valid query with keyword": {
-			query:     "tetris",
+			query:     "tetris language:go",
 			wantError: assert.NoError,
 		},
 		"valid query with number operator": {
-			query:     "size:>=10",
+			query:     "size:>=10 language:go",
 			wantError: assert.NoError,
 		},
 		"valid query with range": {
-			query:     "stars:10..20",
+			query:     "stars:10..20 language:go",
 			wantError: assert.NoError,
 		},
 		"valid query with equal operator": {
@@ -144,7 +144,7 @@ func TestValidateFilters(t *testing.T) {
 			wantError: assert.NoError,
 		},
 		"valid query with date": {
-			query:     "created:2024-03-21",
+			query:     "created:2024-03-21 language:go",
 			wantError: assert.NoError,
 		},
 		"valid complex query": {
@@ -157,6 +157,10 @@ func TestValidateFilters(t *testing.T) {
 		},
 		"invalid number format, return error": {
 			query:     "stars:abc",
+			wantError: assert.Error,
+		},
+		"language filter not set, return error	": {
+			query:     "tetris",
 			wantError: assert.Error,
 		},
 		"invalid date format, return error": {
