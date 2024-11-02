@@ -14,9 +14,12 @@ You good to go running the project with `docker compose up`.
 - [x] Use Go
 - [x] Use Docker
 - [x] Use concurrency
-- [x] Fetch repositores from the github API
-- [x] Fetch languages data of each repository
+- [x] Fetch repositories from the github API based on language and multiple filters
+- [x] Fetch requested language data of each repository
 - [x] Return the aggregated data in the response
+
+- [] implement the filter order
+- [] impelment the filter sort
 
 ## Points to consider
 
