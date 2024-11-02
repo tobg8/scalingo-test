@@ -11,6 +11,7 @@ import (
 
 type GitHubRepository interface {
 	SearchRepositories(query string) (*models.RepositorySearchResponse, error)
+	GetLanguages(repoFullName string) (models.Languages, error)
 }
 
 type githubRepository struct {

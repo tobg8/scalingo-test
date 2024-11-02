@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -19,6 +20,11 @@ func (m *mockGitHubRepository) SearchRepositories(q string) (*models.RepositoryS
 	return args.Get(0).(*models.RepositorySearchResponse), args.Error(1)
 }
 
+func (m *mockGitHubRepository) GetLanguages(repoFullName string) (models.Languages, error) {
+	args := m.Called(repoFullName)
+	return args.Get(0).(models.Languages), args.Error(1)
+}
+
 func TestNewRepositoryUseCase(t *testing.T) {
 	mockRepo := &mockGitHubRepository{}
 	usecase := NewRepositoryUseCase(mockRepo)
@@ -31,14 +37,19 @@ func TestNewRepositoryUseCase(t *testing.T) {
 }
 
 func TestSearchRepositories(t *testing.T) {
+	const language = "go"
+	query := fmt.Sprintf(" language:%s", language)
+
 	tests := map[string]struct {
+		language      string
 		query         string
 		mockCall      func(*mockGitHubRepository)
 		wantError     assert.ErrorAssertionFunc
 		checkResponse func(*testing.T, *models.RepositorySearchResponse)
 	}{
 		"nominal": {
-			query: "golang",
+			language: language,
+			query:    "tetris" + query,
 			mockCall: func(m *mockGitHubRepository) {
 				response := &models.RepositorySearchResponse{
 					TotalCount: 1,
@@ -47,7 +58,8 @@ func TestSearchRepositories(t *testing.T) {
 					},
 				}
 
-				m.On("SearchRepositories", "golang").Return(response, nil)
+				m.On("SearchRepositories", "tetris"+query).Return(response, nil)
+				m.On("GetLanguages", "scalingo/scalingo-test").Return(models.Languages{"go": 10}, nil)
 			},
 			wantError: assert.NoError,
 			checkResponse: func(t *testing.T, resp *models.RepositorySearchResponse) {
@@ -67,6 +79,24 @@ func TestSearchRepositories(t *testing.T) {
 				assert.Nil(t, resp)
 			},
 		},
+		"error fetching languages": {
+			language: language,
+			query:    "tetris" + query,
+			mockCall: func(m *mockGitHubRepository) {
+				response := &models.RepositorySearchResponse{
+					TotalCount: 1,
+					Items: []models.Repository{
+						{FullName: "scalingo/scalingo-test"},
+					},
+				}
+				m.On("SearchRepositories", "tetris"+query).Return(response, nil)
+				m.On("GetLanguages", "scalingo/scalingo-test").Return(models.Languages{}, errors.New("API error"))
+			},
+			wantError: assert.Error,
+			checkResponse: func(t *testing.T, resp *models.RepositorySearchResponse) {
+				assert.Nil(t, resp)
+			},
+		},
 	}
 
 	for name, tt := range tests {
@@ -77,7 +107,7 @@ func TestSearchRepositories(t *testing.T) {
 			}
 
 			ru := NewRepositoryUseCase(mockRepo)
-			resp, err := ru.SearchRepositories(tt.query)
+			resp, err := ru.SearchRepositories(tt.query, tt.language)
 
 			tt.wantError(t, err)
 			tt.checkResponse(t, resp)
@@ -87,16 +117,22 @@ func TestSearchRepositories(t *testing.T) {
 }
 
 func TestValidateQuery(t *testing.T) {
+	const language = "go"
+	query := fmt.Sprintf(" language:%s", language)
+
 	tests := map[string]struct {
+		language  string
 		query     string
 		wantError assert.ErrorAssertionFunc
 	}{
 		"valid simple query": {
-			query:     "tetris language:go",
+			language:  language,
+			query:     "tetris" + query,
 			wantError: assert.NoError,
 		},
 		"valid complex query": {
-			query:     "tetris language:go stars:>100",
+			language:  language,
+			query:     "tetris stars:>100" + query,
 			wantError: assert.NoError,
 		},
 		"empty query, return error": {
@@ -116,51 +152,57 @@ func TestValidateQuery(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			ru := &repositoryUseCase{}
-			err := ru.ValidateQuery(tt.query)
+			language, err := ru.ValidateQuery(tt.query)
 			tt.wantError(t, err)
+			assert.Equal(t, tt.language, language)
 		})
 	}
 }
 
 func TestValidateFilters(t *testing.T) {
+	const language = "go"
+
+	query := fmt.Sprintf(" language:%s", language)
 	tests := map[string]struct {
+		language  string
 		query     string
 		wantError assert.ErrorAssertionFunc
 	}{
 		"valid query with keyword": {
-			query:     "tetris language:go",
+			language:  "go",
+			query:     "tetris" + query,
 			wantError: assert.NoError,
 		},
 		"valid query with number operator": {
-			query:     "size:>=10 language:go",
+			language:  "go",
+			query:     "size:>=10" + query,
 			wantError: assert.NoError,
 		},
 		"valid query with range": {
-			query:     "stars:10..20 language:go",
-			wantError: assert.NoError,
-		},
-		"valid query with equal operator": {
-			query:     "language:go",
+			language:  "go",
+			query:     "stars:10..20" + query,
 			wantError: assert.NoError,
 		},
 		"valid query with date": {
-			query:     "created:2024-03-21 language:go",
+			language:  "go",
+			query:     "created:2024-03-21" + query,
 			wantError: assert.NoError,
 		},
 		"valid complex query": {
-			query:     "tetris language:go stars:>100 created:>2023-01-01",
+			language:  "go",
+			query:     "tetris stars:>100 created:>2023-01-01" + query,
 			wantError: assert.NoError,
 		},
 		"unknown qualifier, return error": {
 			query:     "unknown:value",
 			wantError: assert.Error,
 		},
-		"invalid number format, return error": {
-			query:     "stars:abc",
+		"missing language filter, return error": {
+			query:     "tetris stars:>100 created:>2023-01-01",
 			wantError: assert.Error,
 		},
-		"language filter not set, return error	": {
-			query:     "tetris",
+		"invalid number format, return error": {
+			query:     "stars:abc",
 			wantError: assert.Error,
 		},
 		"invalid date format, return error": {
@@ -175,8 +217,9 @@ func TestValidateFilters(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			err := validateFilters(tt.query)
+			language, err := validateFilters(tt.query)
 			tt.wantError(t, err)
+			assert.Equal(t, tt.language, language)
 		})
 	}
 }

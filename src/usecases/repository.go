@@ -2,8 +2,10 @@ package usecases
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Scalingo/sclng-backend-test-v1/src/models"
@@ -12,8 +14,8 @@ import (
 
 // RepositoryUseCase is the interface for the repository use case
 type RepositoryUseCase interface {
-	SearchRepositories(query string) (*models.RepositorySearchResponse, error)
-	ValidateQuery(query string) error
+	SearchRepositories(query string, language string) (*models.RepositorySearchResponse, error)
+	ValidateQuery(query string) (language string, err error)
 }
 
 type repositoryUseCase struct {
@@ -27,34 +29,91 @@ func NewRepositoryUseCase(gr repositories.GitHubRepository) RepositoryUseCase {
 	}
 }
 
-// SearchRepositories searches repositories
-func (ru *repositoryUseCase) SearchRepositories(q string) (*models.RepositorySearchResponse, error) {
+// SearchRepositories searches repositories and fetches their languages concurrently
+func (ru *repositoryUseCase) SearchRepositories(q string, language string) (*models.RepositorySearchResponse, error) {
 	repos, err := ru.gr.SearchRepositories(q)
 	if err != nil {
+		log.Print("error searching repositories: ", err)
 		return nil, err
 	}
 
-	return repos, err
+	errChan := make(chan error, len(repos.Items))
+	var wg sync.WaitGroup
+
+	var mu sync.Mutex
+	clientRepos := make([]models.Repository, 0, len(repos.Items))
+
+	// For each repository, start a goroutine to fetch its languages
+	for i := range repos.Items {
+		wg.Add(1)
+		repo := repos.Items[i]
+
+		go func() {
+			defer wg.Done()
+
+			languages, err := ru.gr.GetLanguages(repo.FullName)
+			if err != nil {
+				log.Print("error fetching languages for ", repo.FullName, ": ", err)
+				errChan <- fmt.Errorf("error fetching languages for %s: %w", repo.FullName, err)
+				return
+			}
+
+			// Filter languages to only keep the requested language
+			filteredLanguages := make(models.Languages)
+			queryLanguage := strings.ToUpper(language)
+
+			// Convert and check each language from the repo
+			for repoLang, langBytes := range languages {
+				if strings.ToUpper(repoLang) == queryLanguage {
+					filteredLanguages[repoLang] = langBytes
+					break
+				}
+			}
+
+			// If the repository has the requested language (useless i think it has to but just in case)
+			if len(filteredLanguages) > 0 {
+				repo.Languages = filteredLanguages
+
+				mu.Lock()
+				clientRepos = append(clientRepos, repo)
+				mu.Unlock()
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	if err := <-errChan; err != nil {
+		log.Print("error fetching repository languages: ", err)
+		return nil, fmt.Errorf("error fetching repository languages: %w", err)
+	}
+
+	return &models.RepositorySearchResponse{
+		TotalCount:        repos.TotalCount,
+		IncompleteResults: repos.IncompleteResults,
+		Items:             clientRepos,
+	}, nil
 }
 
 // ValidateQuery verifies the query and filters inside it
-func (ru *repositoryUseCase) ValidateQuery(q string) error {
+func (ru *repositoryUseCase) ValidateQuery(q string) (language string, err error) {
 	if err := verifyQueryLength(q); err != nil {
-		return err
+		return "", err
 	}
 
-	if err := validateFilters(q); err != nil {
-		return err
+	if language, err = validateFilters(q); err != nil {
+		return "", err
 	}
 
-	return nil
+	return language, nil
 }
 
 // ValidatorFunc is used to validates a filter
 type ValidatorFunc func(qualifier, value string) error
 
 // validateFilters verifies the filters in the query
-func validateFilters(q string) error {
+func validateFilters(q string) (language string, error error) {
 	validators := map[string]ValidatorFunc{
 		"size":      validateNumberOperator,
 		"topics":    validateNumberOperator,
@@ -80,23 +139,24 @@ func validateFilters(q string) error {
 
 		if qualifier == "language" {
 			hasLanguageFilter = true
+			language = value
 		}
 
 		validator, exists := validators[qualifier]
 		if !exists {
-			return fmt.Errorf("unknown qualifier: %s", qualifier)
+			return language, fmt.Errorf("unknown qualifier: %s", qualifier)
 		}
 
 		if err := validator(qualifier, value); err != nil {
-			return err
+			return language, err
 		}
 	}
 
 	if !hasLanguageFilter {
-		return fmt.Errorf("no language filter set, please provide one")
+		return language, fmt.Errorf("no language filter set, please provide one")
 	}
 
-	return nil
+	return language, nil
 }
 
 // validateNumberOperator verifies number filters

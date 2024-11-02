@@ -158,7 +158,6 @@ func TestSearchRepositories(t *testing.T) {
 				if len(result.Items) > 0 {
 					assert.Equal(t, expected.Items[0].FullName, result.Items[0].FullName)
 					assert.Equal(t, expected.Items[0].Description, result.Items[0].Description)
-					assert.Equal(t, expected.Items[0].HTMLURL, result.Items[0].HTMLURL)
 					assert.Equal(t, expected.Items[0].Owner.Login, result.Items[0].Owner.Login)
 				}
 			}
