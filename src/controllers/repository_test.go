@@ -15,14 +15,14 @@ type mockRepositoryUseCase struct {
 	mock.Mock
 }
 
-func (m *mockRepositoryUseCase) SearchRepositories(query string) (*models.RepositorySearchResponse, error) {
+func (m *mockRepositoryUseCase) SearchRepositories(query, language string) (*models.RepositorySearchResponse, error) {
 	args := m.Called(query)
 	return args.Get(0).(*models.RepositorySearchResponse), args.Error(1)
 }
 
-func (m *mockRepositoryUseCase) ValidateQuery(query string) error {
+func (m *mockRepositoryUseCase) ValidateQuery(query string) (language string, err error) {
 	args := m.Called(query)
-	return args.Error(0)
+	return args.Get(0).(string), args.Error(1)
 }
 
 func TestSearchRepositoriesEndpoint(t *testing.T) {
@@ -32,10 +32,10 @@ func TestSearchRepositoriesEndpoint(t *testing.T) {
 		expectedStatus int
 	}{
 		"nominal": {
-			endpoint: "/repositories/search?q=golang",
+			endpoint: "/repositories/search?q=golang+language:go",
 			mockCall: func(m *mockRepositoryUseCase) {
-				m.On("ValidateQuery", "golang").Return(nil)
-				m.On("SearchRepositories", "golang").Return(&models.RepositorySearchResponse{
+				m.On("ValidateQuery", "golang language:go").Return("go", nil)
+				m.On("SearchRepositories", "golang language:go").Return(&models.RepositorySearchResponse{
 					TotalCount: 1,
 					Items: []models.Repository{
 						{FullName: "scalingo/scalingo-test"},
@@ -48,7 +48,7 @@ func TestSearchRepositoriesEndpoint(t *testing.T) {
 		"usecase error, return error": {
 			endpoint: "/repositories/search?q=golang",
 			mockCall: func(m *mockRepositoryUseCase) {
-				m.On("ValidateQuery", "golang").Return(nil)
+				m.On("ValidateQuery", "golang").Return("", nil)
 				m.On("SearchRepositories", "golang").Return(&models.RepositorySearchResponse{}, errors.New("usecase error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -56,7 +56,7 @@ func TestSearchRepositoriesEndpoint(t *testing.T) {
 		"missing query, return error": {
 			endpoint: "/repositories/search",
 			mockCall: func(m *mockRepositoryUseCase) {
-				m.On("ValidateQuery", "").Return(errors.New("query empty"))
+				m.On("ValidateQuery", "").Return("", errors.New("query empty"))
 			},
 			expectedStatus: http.StatusBadRequest,
 		},

@@ -7,10 +7,11 @@ type RepositorySearchResponse struct {
 }
 
 type Repository struct {
-	FullName    string `json:"full_name"`
-	Description string `json:"description"`
-	HTMLURL     string `json:"html_url"`
-	Owner       Owner  `json:"owner"`
+	FullName    string    `json:"full_name"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Languages   Languages `json:"languages"`
+	Owner       Owner     `json:"owner"`
 }
 
 type Owner struct {
@@ -18,7 +19,6 @@ type Owner struct {
 	ID        int    `json:"id"`
 	NodeID    string `json:"node_id"`
 	AvatarURL string `json:"avatar_url"`
-	HTMLURL   string `json:"html_url"`
 }
 
 type Languages map[string]int

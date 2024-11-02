@@ -20,13 +20,14 @@ func NewRepositoryController(ru usecases.RepositoryUseCase) *RepositoryControlle
 func (rc *RepositoryController) SearchRepositories(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 
-	if err := rc.ru.ValidateQuery(query); err != nil {
+	language, err := rc.ru.ValidateQuery(query)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
-	repos, err := rc.ru.SearchRepositories(query)
+	repos, err := rc.ru.SearchRepositories(query, language)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
