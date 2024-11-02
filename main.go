@@ -36,7 +36,7 @@ func initDependencies() *http.ServeMux {
 	ru := usecases.NewRepositoryUseCase(rg)
 	rc := controllers.NewRepositoryController(ru)
 
-	mux.HandleFunc("/repositories/search", rc.SearchRepositories)
+	mux.HandleFunc("/repos", rc.SearchRepositories)
 
 	return mux
 }
