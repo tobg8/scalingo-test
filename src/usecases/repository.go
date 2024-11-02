@@ -146,13 +146,9 @@ func validateDateOperator(qualifier, value string) error {
 func extractValue(value string) string {
 	var extractedValue string
 	switch {
-	case strings.HasPrefix(value, ">="):
+	case strings.HasPrefix(value, ">=") || strings.HasPrefix(value, "<="):
 		extractedValue = value[2:]
-	case strings.HasPrefix(value, "<="):
-		extractedValue = value[2:]
-	case strings.HasPrefix(value, ">"):
-		extractedValue = value[1:]
-	case strings.HasPrefix(value, "<"):
+	case strings.HasPrefix(value, ">") || strings.HasPrefix(value, "<"):
 		extractedValue = value[1:]
 	default:
 		extractedValue = value
