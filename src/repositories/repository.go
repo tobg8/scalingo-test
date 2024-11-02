@@ -44,7 +44,10 @@ func (r *githubRepository) SearchRepositories(query string) (*models.RepositoryS
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		// happens only because we do not verify the value of certain parameters that needs
+		// strict equality (license, language...)
+		// or issue with accessing the Github API
+		return nil, fmt.Errorf("something is wrong with your request, please double license or language")
 	}
 
 	var result models.RepositorySearchResponse

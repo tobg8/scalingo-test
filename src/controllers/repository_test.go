@@ -20,6 +20,11 @@ func (m *mockRepositoryUseCase) SearchRepositories(query string) (*models.Reposi
 	return args.Get(0).(*models.RepositorySearchResponse), args.Error(1)
 }
 
+func (m *mockRepositoryUseCase) ValidateQuery(query string) error {
+	args := m.Called(query)
+	return args.Error(0)
+}
+
 func TestSearchRepositoriesEndpoint(t *testing.T) {
 	tests := map[string]struct {
 		endpoint       string
@@ -29,29 +34,30 @@ func TestSearchRepositoriesEndpoint(t *testing.T) {
 		"nominal": {
 			endpoint: "/repositories/search?q=golang",
 			mockCall: func(m *mockRepositoryUseCase) {
-				response := &models.RepositorySearchResponse{
+				m.On("ValidateQuery", "golang").Return(nil)
+				m.On("SearchRepositories", "golang").Return(&models.RepositorySearchResponse{
 					TotalCount: 1,
 					Items: []models.Repository{
 						{FullName: "scalingo/scalingo-test"},
 					},
-				}
-				m.On("SearchRepositories", "golang").Return(response, nil)
+				}, nil)
+
 			},
 			expectedStatus: http.StatusOK,
 		},
 		"usecase error, return error": {
 			endpoint: "/repositories/search?q=golang",
 			mockCall: func(m *mockRepositoryUseCase) {
+				m.On("ValidateQuery", "golang").Return(nil)
 				m.On("SearchRepositories", "golang").Return(&models.RepositorySearchResponse{}, errors.New("usecase error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 		},
 		"missing query, return error": {
-			endpoint:       "/repositories/search",
-			expectedStatus: http.StatusBadRequest,
-		},
-		"empty queryu, return error": {
-			endpoint:       "/repositories/search?q=",
+			endpoint: "/repositories/search",
+			mockCall: func(m *mockRepositoryUseCase) {
+				m.On("ValidateQuery", "").Return(errors.New("query empty"))
+			},
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
