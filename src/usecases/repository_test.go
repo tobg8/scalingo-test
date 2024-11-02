@@ -197,6 +197,10 @@ func TestValidateFilters(t *testing.T) {
 			query:     "unknown:value",
 			wantError: assert.Error,
 		},
+		"invalid separator usage, return error": {
+			query:     "language:go:size:10",
+			wantError: assert.Error,
+		},
 		"missing language filter, return error": {
 			query:     "tetris stars:>100 created:>2023-01-01",
 			wantError: assert.Error,

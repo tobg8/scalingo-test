@@ -132,6 +132,10 @@ func validateFilters(q string) (language string, error error) {
 	hasLanguageFilter := false
 
 	for _, part := range parts {
+		if strings.Count(part, ":") > 1 {
+			return "", fmt.Errorf("invalid filter format in '%s': use '+' to separate filters, not ':'", part)
+		}
+
 		qualifier, value, found := strings.Cut(part, ":")
 		if !found {
 			continue
