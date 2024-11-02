@@ -123,7 +123,7 @@ func TestSearchRepositories(t *testing.T) {
 					baseURL:    "://invalid-url",
 					httpClient: &http.Client{},
 				}
-				_, err := repo.SearchRepositories(tc.queryParam)
+				_, err := repo.SearchRepositories(tc.queryParam, "100", "1")
 				assert.Error(t, err)
 			},
 		},
@@ -136,7 +136,7 @@ func TestSearchRepositories(t *testing.T) {
 					baseURL:    "://invalid-url",
 					httpClient: &http.Client{},
 				}
-				_, err := repo.SearchRepositories(tt.queryParam)
+				_, err := repo.SearchRepositories(tt.queryParam, "100", "1")
 				tt.wantError(t, err)
 				return
 			}
@@ -144,7 +144,7 @@ func TestSearchRepositories(t *testing.T) {
 			server, repo := setupTestServer(t, tt)
 			defer server.Close()
 
-			result, err := repo.SearchRepositories(tt.queryParam)
+			result, err := repo.SearchRepositories(tt.queryParam, "100", "1")
 			tt.wantError(t, err)
 
 			if tt.mockStatusCode == http.StatusOK && err == nil {
