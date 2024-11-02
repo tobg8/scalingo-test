@@ -14,7 +14,7 @@ import (
 
 // RepositoryUseCase is the interface for the repository use case
 type RepositoryUseCase interface {
-	SearchRepositories(query string, language string) (*models.RepositorySearchResponse, error)
+	SearchRepositories(query, language, perPage, page string) (*models.RepositorySearchResponse, error)
 	ValidateQuery(query string) (language string, err error)
 }
 
@@ -30,8 +30,8 @@ func NewRepositoryUseCase(gr repositories.GitHubRepository) RepositoryUseCase {
 }
 
 // SearchRepositories searches repositories and fetches their languages concurrently
-func (ru *repositoryUseCase) SearchRepositories(q string, language string) (*models.RepositorySearchResponse, error) {
-	repos, err := ru.gr.SearchRepositories(q)
+func (ru *repositoryUseCase) SearchRepositories(q, language, perPage, page string) (*models.RepositorySearchResponse, error) {
+	repos, err := ru.gr.SearchRepositories(q, perPage, page)
 	if err != nil {
 		log.Print("error searching repositories: ", err)
 		return nil, err
@@ -91,6 +91,8 @@ func (ru *repositoryUseCase) SearchRepositories(q string, language string) (*mod
 	return &models.RepositorySearchResponse{
 		TotalCount:        repos.TotalCount,
 		Count:             len(clientRepos),
+		PerPage:           perPage,
+		Page:              page,
 		IncompleteResults: repos.IncompleteResults,
 		Items:             clientRepos,
 	}, nil

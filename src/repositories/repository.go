@@ -11,7 +11,7 @@ import (
 )
 
 type GitHubRepository interface {
-	SearchRepositories(query string) (*models.RepositorySearchResponse, error)
+	SearchRepositories(query, perPage, page string) (*models.RepositorySearchResponse, error)
 	GetLanguages(repoFullName string) (models.Languages, error)
 }
 
@@ -56,8 +56,13 @@ func (gr *githubRepository) doRequest(endpoint string, result interface{}) error
 	return nil
 }
 
-func (gr *githubRepository) SearchRepositories(query string) (*models.RepositorySearchResponse, error) {
-	endpoint := fmt.Sprintf("%s/search/repositories?q=%s", gr.baseURL, url.QueryEscape(query))
+func (gr *githubRepository) SearchRepositories(query, perPage, page string) (*models.RepositorySearchResponse, error) {
+	endpoint := fmt.Sprintf("%s/search/repositories?q=%s&per_page=%s&page=%s",
+		gr.baseURL,
+		url.QueryEscape(query),
+		url.QueryEscape(perPage),
+		url.QueryEscape(page),
+	)
 
 	var result models.RepositorySearchResponse
 	if err := gr.doRequest(endpoint, &result); err != nil {

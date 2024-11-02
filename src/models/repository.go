@@ -3,6 +3,8 @@ package models
 type RepositorySearchResponse struct {
 	TotalCount        int          `json:"total_count"`
 	Count             int          `json:"count"`
+	PerPage           string       `json:"per_page"`
+	Page              string       `json:"page"`
 	IncompleteResults bool         `json:"incomplete_results"`
 	Items             []Repository `json:"items"`
 }

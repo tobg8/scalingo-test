@@ -47,6 +47,12 @@ The APi offers only one endpoint:
 
 The query parameters are:
 
+<http://localhost:5000/repos?q=key:value+key:value&per_page=100&page=1>
+
+- *q* - the query string
+
+___
+
 - *size*     - 1..10||>=10||<=10||:20
 - *topics* - 1..10||>=10||<=10||:20
 - *stars*    - 1..10||>=10||<=10||:20
@@ -58,6 +64,14 @@ The query parameters are:
 
 - *created* - >=2024-01-01||<=2024-01-01||:2024-01-01
 - *pushed* - >=2024-01-01||<=2024-01-01||:2024-01-01
+
+___
+
+- *per_page* - number of items per page (default: 100, max 100)
+
+___
+
+- *page* - number of the page (default: 1)
 
 ## Examples
 

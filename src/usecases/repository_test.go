@@ -15,8 +15,8 @@ type mockGitHubRepository struct {
 	mock.Mock
 }
 
-func (m *mockGitHubRepository) SearchRepositories(q string) (*models.RepositorySearchResponse, error) {
-	args := m.Called(q)
+func (m *mockGitHubRepository) SearchRepositories(q, perPage, page string) (*models.RepositorySearchResponse, error) {
+	args := m.Called(q, perPage, page)
 	return args.Get(0).(*models.RepositorySearchResponse), args.Error(1)
 }
 
@@ -58,7 +58,7 @@ func TestSearchRepositories(t *testing.T) {
 					},
 				}
 
-				m.On("SearchRepositories", "tetris"+query).Return(response, nil)
+				m.On("SearchRepositories", "tetris"+query, "100", "1").Return(response, nil)
 				m.On("GetLanguages", "scalingo/scalingo-test").Return(models.Languages{"go": 10}, nil)
 			},
 			wantError: assert.NoError,
@@ -72,7 +72,7 @@ func TestSearchRepositories(t *testing.T) {
 		"error search": {
 			query: "golang",
 			mockCall: func(m *mockGitHubRepository) {
-				m.On("SearchRepositories", "golang").Return(&models.RepositorySearchResponse{}, errors.New("could not perform search query"))
+				m.On("SearchRepositories", "golang", "100", "1").Return(&models.RepositorySearchResponse{}, errors.New("could not perform search query"))
 			},
 			wantError: assert.Error,
 			checkResponse: func(t *testing.T, resp *models.RepositorySearchResponse) {
@@ -89,7 +89,7 @@ func TestSearchRepositories(t *testing.T) {
 						{FullName: "scalingo/scalingo-test"},
 					},
 				}
-				m.On("SearchRepositories", "tetris"+query).Return(response, nil)
+				m.On("SearchRepositories", "tetris"+query, "100", "1").Return(response, nil)
 				m.On("GetLanguages", "scalingo/scalingo-test").Return(models.Languages{}, errors.New("API error"))
 			},
 			wantError: assert.Error,
@@ -107,7 +107,7 @@ func TestSearchRepositories(t *testing.T) {
 			}
 
 			ru := NewRepositoryUseCase(mockRepo)
-			resp, err := ru.SearchRepositories(tt.query, tt.language)
+			resp, err := ru.SearchRepositories(tt.query, tt.language, "100", "1")
 
 			tt.wantError(t, err)
 			tt.checkResponse(t, resp)
