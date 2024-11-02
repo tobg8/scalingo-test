@@ -33,6 +33,7 @@ func NewRepositoryUseCase(gr repositories.GitHubRepository) RepositoryUseCase {
 func (ru *repositoryUseCase) SearchRepositories(q string, language string) (*models.RepositorySearchResponse, error) {
 	repos, err := ru.gr.SearchRepositories(q)
 	if err != nil {
+		log.Print("error searching repositories: ", err)
 		return nil, err
 	}
 
@@ -52,7 +53,7 @@ func (ru *repositoryUseCase) SearchRepositories(q string, language string) (*mod
 
 			languages, err := ru.gr.GetLanguages(repo.FullName)
 			if err != nil {
-				log.Print(err)
+				log.Print("error fetching languages for ", repo.FullName, ": ", err)
 				errChan <- fmt.Errorf("error fetching languages for %s: %w", repo.FullName, err)
 				return
 			}
@@ -84,6 +85,7 @@ func (ru *repositoryUseCase) SearchRepositories(q string, language string) (*mod
 	close(errChan)
 
 	if err := <-errChan; err != nil {
+		log.Print("error fetching repository languages: ", err)
 		return nil, fmt.Errorf("error fetching repository languages: %w", err)
 	}
 
