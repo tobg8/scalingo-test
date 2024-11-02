@@ -50,9 +50,12 @@ func (ru *repositoryUseCase) ValidateQuery(q string) error {
 	return nil
 }
 
+// ValidatorFunc is used to validates a filter
+type ValidatorFunc func(qualifier, value string) error
+
 // validateFilters verifies the filters in the query
 func validateFilters(q string) error {
-	validators := map[string]func(string, string) error{
+	validators := map[string]ValidatorFunc{
 		"size":      validateNumberOperator,
 		"topics":    validateNumberOperator,
 		"stars":     validateNumberOperator,
