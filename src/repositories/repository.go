@@ -10,7 +10,7 @@ import (
 )
 
 type GitHubRepository interface {
-	SearchRepositories(query, perPage, page, header string) (*models.RepositorySearchResponse, error)
+	SearchRepositories(rsp *models.RepositorySearchParams) (*models.RepositorySearchResponse, error)
 	GetLanguages(repoFullName, header string) (models.Languages, error)
 }
 
@@ -53,7 +53,7 @@ func (gr *githubRepository) doRequest(endpoint string, header string, result int
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
 			return fmt.Errorf("error with request (status %d), failed to decode error: %w", resp.StatusCode, err)
 		}
-		return fmt.Errorf("GitHub API error (status %d): %s. This is caused by a bad equality filter (language, or license)", resp.StatusCode, errResp.Message)
+		return fmt.Errorf("GitHub API error (status %d): %s. 422 status code is caused by a bad equality filter (language, or license)", resp.StatusCode, errResp.Message)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
@@ -63,16 +63,16 @@ func (gr *githubRepository) doRequest(endpoint string, header string, result int
 	return nil
 }
 
-func (gr *githubRepository) SearchRepositories(query, perPage, page, header string) (*models.RepositorySearchResponse, error) {
+func (gr *githubRepository) SearchRepositories(rsp *models.RepositorySearchParams) (*models.RepositorySearchResponse, error) {
 	endpoint := fmt.Sprintf("%s/search/repositories?q=%s&per_page=%s&page=%s",
 		gr.baseURL,
-		url.QueryEscape(query),
-		url.QueryEscape(perPage),
-		url.QueryEscape(page),
+		url.QueryEscape(rsp.Query),
+		url.QueryEscape(rsp.PerPage),
+		url.QueryEscape(rsp.Page),
 	)
 
 	var result models.RepositorySearchResponse
-	if err := gr.doRequest(endpoint, header, &result); err != nil {
+	if err := gr.doRequest(endpoint, rsp.Header, &result); err != nil {
 		return nil, err
 	}
 

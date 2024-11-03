@@ -15,8 +15,8 @@ type mockGitHubRepository struct {
 	mock.Mock
 }
 
-func (m *mockGitHubRepository) SearchRepositories(q, perPage, page, header string) (*models.RepositorySearchResponse, error) {
-	args := m.Called(q, perPage, page, header)
+func (m *mockGitHubRepository) SearchRepositories(rsp *models.RepositorySearchParams) (*models.RepositorySearchResponse, error) {
+	args := m.Called(rsp)
 	return args.Get(0).(*models.RepositorySearchResponse), args.Error(1)
 }
 
@@ -41,15 +41,16 @@ func TestSearchRepositories(t *testing.T) {
 	query := fmt.Sprintf(" language:%s", language)
 
 	tests := map[string]struct {
-		language      string
-		query         string
+		rsp           *models.RepositorySearchParams
 		mockCall      func(*mockGitHubRepository)
 		wantError     assert.ErrorAssertionFunc
 		checkResponse func(*testing.T, *models.RepositorySearchResponse)
 	}{
 		"nominal": {
-			language: language,
-			query:    "tetris" + query,
+			rsp: &models.RepositorySearchParams{
+				Language: language,
+				Query:    "tetris" + query,
+			},
 			mockCall: func(m *mockGitHubRepository) {
 				response := &models.RepositorySearchResponse{
 					TotalCount: 1,
@@ -58,7 +59,10 @@ func TestSearchRepositories(t *testing.T) {
 					},
 				}
 
-				m.On("SearchRepositories", "tetris"+query, "100", "1", "").Return(response, nil)
+				m.On("SearchRepositories", &models.RepositorySearchParams{
+					Language: language,
+					Query:    "tetris" + query,
+				}).Return(response, nil)
 				m.On("GetLanguages", "scalingo/scalingo-test", "").Return(models.Languages{"go": 10}, nil)
 			},
 			wantError: assert.NoError,
@@ -70,9 +74,15 @@ func TestSearchRepositories(t *testing.T) {
 			},
 		},
 		"error search": {
-			query: "golang",
+			rsp: &models.RepositorySearchParams{
+				Language: language,
+				Query:    "golang",
+			},
 			mockCall: func(m *mockGitHubRepository) {
-				m.On("SearchRepositories", "golang", "100", "1", "").Return(&models.RepositorySearchResponse{}, errors.New("could not perform search query"))
+				m.On("SearchRepositories", &models.RepositorySearchParams{
+					Language: language,
+					Query:    "golang",
+				}).Return(&models.RepositorySearchResponse{}, errors.New("could not perform search query"))
 			},
 			wantError: assert.Error,
 			checkResponse: func(t *testing.T, resp *models.RepositorySearchResponse) {
@@ -80,8 +90,10 @@ func TestSearchRepositories(t *testing.T) {
 			},
 		},
 		"error fetching languages": {
-			language: language,
-			query:    "tetris" + query,
+			rsp: &models.RepositorySearchParams{
+				Language: language,
+				Query:    "tetris" + query,
+			},
 			mockCall: func(m *mockGitHubRepository) {
 				response := &models.RepositorySearchResponse{
 					TotalCount: 1,
@@ -89,7 +101,10 @@ func TestSearchRepositories(t *testing.T) {
 						{FullName: "scalingo/scalingo-test"},
 					},
 				}
-				m.On("SearchRepositories", "tetris"+query, "100", "1", "").Return(response, nil)
+				m.On("SearchRepositories", &models.RepositorySearchParams{
+					Language: language,
+					Query:    "tetris" + query,
+				}).Return(response, nil)
 				m.On("GetLanguages", "scalingo/scalingo-test", "").Return(models.Languages{}, errors.New("API error"))
 			},
 			wantError: assert.Error,
@@ -107,7 +122,7 @@ func TestSearchRepositories(t *testing.T) {
 			}
 
 			ru := NewRepositoryUseCase(mockRepo)
-			resp, err := ru.SearchRepositories(tt.query, tt.language, "100", "1", "")
+			resp, err := ru.SearchRepositories(tt.rsp)
 
 			tt.wantError(t, err)
 			tt.checkResponse(t, resp)

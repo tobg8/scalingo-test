@@ -15,8 +15,8 @@ type mockRepositoryUseCase struct {
 	mock.Mock
 }
 
-func (m *mockRepositoryUseCase) SearchRepositories(query, language, perPage, page, header string) (*models.RepositorySearchResponse, error) {
-	args := m.Called(query, language, perPage, page, header)
+func (m *mockRepositoryUseCase) SearchRepositories(rsp *models.RepositorySearchParams) (*models.RepositorySearchResponse, error) {
+	args := m.Called(rsp)
 	return args.Get(0).(*models.RepositorySearchResponse), args.Error(1)
 }
 
@@ -28,17 +28,27 @@ func (m *mockRepositoryUseCase) ValidateQuery(query string) (language string, er
 func TestSearchRepositoriesEndpoint(t *testing.T) {
 	header := "Bearer tokentoken"
 	tests := map[string]struct {
-		endpoint       string
-		header         string
+		rsp            *models.RepositorySearchParams
 		mockCall       func(*mockRepositoryUseCase)
 		expectedStatus int
 	}{
 		"nominal": {
-			endpoint: "/repositories/search?q=golang+language:go",
-			header:   header,
+			rsp: &models.RepositorySearchParams{
+				Query:    "golang+language:go",
+				Header:   header,
+				PerPage:  "100",
+				Page:     "1",
+				Language: "go",
+			},
 			mockCall: func(m *mockRepositoryUseCase) {
 				m.On("ValidateQuery", "golang language:go").Return("go", nil)
-				m.On("SearchRepositories", "golang language:go", "go", "100", "1", "Bearer tokentoken").Return(&models.RepositorySearchResponse{
+				m.On("SearchRepositories", &models.RepositorySearchParams{
+					Query:    "golang language:go",
+					Header:   header,
+					Language: "go",
+					PerPage:  "100",
+					Page:     "1",
+				}).Return(&models.RepositorySearchResponse{
 					TotalCount: 1,
 					Items: []models.Repository{
 						{FullName: "scalingo/scalingo-test"},
@@ -48,32 +58,54 @@ func TestSearchRepositoriesEndpoint(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		"missing header token, return error": {
-			endpoint: "/repositories/search?q=golang",
+			rsp: &models.RepositorySearchParams{
+				Query: "golang",
+			},
 			mockCall: func(m *mockRepositoryUseCase) {
 				m.On("ValidateQuery", "golang").Return("go", nil)
-				m.On("SearchRepositories", "golang", "go", "100", "1").Return(&models.RepositorySearchResponse{}, errors.New("usecase error"))
+				m.On("SearchRepositories", &models.RepositorySearchParams{
+					Query:    "golang",
+					Header:   "",
+					Language: "",
+					PerPage:  "100",
+					Page:     "1",
+				}).Return(&models.RepositorySearchResponse{}, errors.New("usecase error"))
 			},
 			expectedStatus: http.StatusUnauthorized,
 		},
 		"usecase error, return error": {
-			endpoint: "/repositories/search?q=golang",
-			header:   header,
+			rsp: &models.RepositorySearchParams{
+				Query:   "wow",
+				Header:  header,
+				PerPage: "100",
+				Page:    "1",
+			},
 			mockCall: func(m *mockRepositoryUseCase) {
-				m.On("ValidateQuery", "golang").Return("go", nil)
-				m.On("SearchRepositories", "golang", "go", "100", "1", "Bearer tokentoken").Return(&models.RepositorySearchResponse{}, errors.New("usecase error"))
+				m.On("ValidateQuery", "wow").Return("", nil)
+				m.On("SearchRepositories", &models.RepositorySearchParams{
+					Query:    "wow",
+					Header:   header,
+					Language: "",
+					PerPage:  "100",
+					Page:     "1",
+				}).Return(&models.RepositorySearchResponse{}, errors.New("usecase error"))
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
 		"missing query, return error": {
-			endpoint: "/repositories/search",
-			header:   header,
+			rsp: &models.RepositorySearchParams{
+				Header: header,
+			},
 			mockCall: func(m *mockRepositoryUseCase) {
 				m.On("ValidateQuery", "").Return("", errors.New("query empty"))
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
 		"invalid per_page, return error": {
-			endpoint: "/repositories/search?q=golang+language:go&per_page=abc",
+			rsp: &models.RepositorySearchParams{
+				Query:  "golang+language:go&per_page=abc",
+				Header: header,
+			},
 			mockCall: func(m *mockRepositoryUseCase) {
 				m.On("ValidateQuery", "golang language:go").Return("go", nil)
 			},
@@ -83,7 +115,12 @@ func TestSearchRepositoriesEndpoint(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tt.endpoint, nil)
+			queryURL := ""
+			if tt.rsp.Query != "" {
+				queryURL = "q=" + tt.rsp.Query
+			}
+
+			req := httptest.NewRequest(http.MethodGet, "/repositories/search?"+queryURL, nil)
 			w := httptest.NewRecorder()
 
 			mockUseCase := new(mockRepositoryUseCase)
@@ -92,8 +129,8 @@ func TestSearchRepositoriesEndpoint(t *testing.T) {
 			if tt.mockCall != nil {
 				tt.mockCall(mockUseCase)
 			}
-			if tt.header != "" {
-				req.Header.Add("Authorization", tt.header)
+			if tt.rsp.Header != "" {
+				req.Header.Add("Authorization", tt.rsp.Header)
 			}
 
 			controller.SearchRepositories(w, req)
@@ -163,6 +200,46 @@ func TestValidatePagination(t *testing.T) {
 			page := tt.page
 
 			err := validatePagination(&perPage, &page)
+			tt.wantErr(t, err)
+		})
+	}
+}
+
+// this should be a helper function but we use it only here for now
+func ptr(s string) *string {
+	return &s
+}
+
+func TestValidateHeader(t *testing.T) {
+	tests := map[string]struct {
+		header  *string
+		wantErr assert.ErrorAssertionFunc
+	}{
+		"valid header": {
+			header:  ptr("Bearer validtoken"),
+			wantErr: assert.NoError,
+		},
+		"missing Bearer prefix": {
+			header:  ptr("token123"),
+			wantErr: assert.Error,
+		},
+		"empty token": {
+			header:  ptr("Bearer "),
+			wantErr: assert.Error,
+		},
+		"empty header": {
+			header:  ptr(""),
+			wantErr: assert.Error,
+		},
+		"too short header": {
+			header:  ptr("Bearer"),
+			wantErr: assert.Error,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := validateHeader(tt.header)
 			tt.wantErr(t, err)
 		})
 	}
