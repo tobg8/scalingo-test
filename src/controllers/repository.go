@@ -49,7 +49,14 @@ func (rc *RepositoryController) SearchRepositories(w http.ResponseWriter, r *htt
 		return
 	}
 
-	repos, err := rc.ru.SearchRepositories(query, language, perPage, page)
+	header := r.Header.Get("Authorization")
+	err = validateHeader(&header)
+	if err != nil {
+		renderError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	repos, err := rc.ru.SearchRepositories(query, language, perPage, page, header)
 	if err != nil {
 		renderError(w, http.StatusBadRequest, err.Error())
 		return
@@ -77,6 +84,19 @@ func validatePagination(perPage, page *string) error {
 	p, err := strconv.Atoi(*page)
 	if err != nil || p < 1 {
 		return fmt.Errorf("page must be a positive number")
+	}
+
+	return nil
+}
+
+func validateHeader(h *string) error {
+	if len(*h) <= 7 || (*h)[:7] != "Bearer " {
+		return fmt.Errorf("invalid Authorization header format, must be 'Bearer 'token' ")
+	}
+
+	token := (*h)[7:]
+	if token == "" {
+		return fmt.Errorf("empty token provided")
 	}
 
 	return nil

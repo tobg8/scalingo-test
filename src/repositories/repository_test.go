@@ -123,7 +123,7 @@ func TestSearchRepositories(t *testing.T) {
 					baseURL:    "://invalid-url",
 					httpClient: &http.Client{},
 				}
-				_, err := repo.SearchRepositories(tc.queryParam, "100", "1")
+				_, err := repo.SearchRepositories(tc.queryParam, "100", "1", "")
 				assert.Error(t, err)
 			},
 		},
@@ -136,7 +136,7 @@ func TestSearchRepositories(t *testing.T) {
 					baseURL:    "://invalid-url",
 					httpClient: &http.Client{},
 				}
-				_, err := repo.SearchRepositories(tt.queryParam, "100", "1")
+				_, err := repo.SearchRepositories(tt.queryParam, "100", "1", "")
 				tt.wantError(t, err)
 				return
 			}
@@ -144,7 +144,7 @@ func TestSearchRepositories(t *testing.T) {
 			server, repo := setupTestServer(t, tt)
 			defer server.Close()
 
-			result, err := repo.SearchRepositories(tt.queryParam, "100", "1")
+			result, err := repo.SearchRepositories(tt.queryParam, "100", "1", "")
 			tt.wantError(t, err)
 
 			if tt.mockStatusCode == http.StatusOK && err == nil {
@@ -216,7 +216,7 @@ func TestGetLanguages(t *testing.T) {
 					baseURL:    "://invalid-url",
 					httpClient: &http.Client{},
 				}
-				_, err := repo.GetLanguages(tc.queryParam)
+				_, err := repo.GetLanguages(tc.queryParam, "")
 				assert.Error(t, err)
 			},
 		},
@@ -229,7 +229,7 @@ func TestGetLanguages(t *testing.T) {
 					baseURL:    "://invalid-url",
 					httpClient: &http.Client{},
 				}
-				_, err := repo.GetLanguages(tt.queryParam)
+				_, err := repo.GetLanguages(tt.queryParam, "")
 				tt.wantError(t, err)
 				return
 			}
@@ -237,7 +237,7 @@ func TestGetLanguages(t *testing.T) {
 			server, repo := setupTestServer(t, tt)
 			defer server.Close()
 
-			languages, err := repo.GetLanguages(tt.queryParam)
+			languages, err := repo.GetLanguages(tt.queryParam, "")
 			tt.wantError(t, err)
 
 			if tt.mockStatusCode == http.StatusOK && err == nil {
