@@ -2,7 +2,7 @@
 
 ## Before running the project
 
-- We need a github token to run the project, this is needed because we crush github api rate limit quickly using go multithreading.
+- We need a github token to run the project, this is needed because we crush github api rate limit quickly using go multithreading (we have only 60 requests per hour beeing unauthenticated).
 
 - To get a token, go to <https://github.com/settings/tokens> and generate a token with the `public_repo` scope.
 
