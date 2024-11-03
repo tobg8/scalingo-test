@@ -27,6 +27,10 @@ func NewGitHubRepository() GitHubRepository {
 	}
 }
 
+type GitHubErrorResponse struct {
+	Message string `json:"message"`
+}
+
 // doRequest is a helper function that handles HTTP request
 func (gr *githubRepository) doRequest(endpoint string, result interface{}) error {
 	req, err := http.NewRequest("GET", endpoint, nil)
@@ -46,7 +50,11 @@ func (gr *githubRepository) doRequest(endpoint string, result interface{}) error
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("error with request, status: %d", resp.StatusCode)
+		var errResp GitHubErrorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
+			return fmt.Errorf("error with request (status %d), failed to decode error: %w", resp.StatusCode, err)
+		}
+		return fmt.Errorf("GitHub API error (status %d): %s. This is caused by a bad equality filter (language, or license)", resp.StatusCode, errResp.Message)
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {

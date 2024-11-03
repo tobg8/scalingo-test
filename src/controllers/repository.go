@@ -19,13 +19,24 @@ func NewRepositoryController(ru usecases.RepositoryUseCase) *RepositoryControlle
 	}
 }
 
+type ErrorResponse struct {
+	Message string `json:"error"`
+}
+
+func renderError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(ErrorResponse{
+		Message: message,
+	})
+}
+
 func (rc *RepositoryController) SearchRepositories(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 
 	language, err := rc.ru.ValidateQuery(query)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		renderError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -34,15 +45,13 @@ func (rc *RepositoryController) SearchRepositories(w http.ResponseWriter, r *htt
 
 	err = validatePagination(&perPage, &page)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		renderError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	repos, err := rc.ru.SearchRepositories(query, language, perPage, page)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		renderError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
