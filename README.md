@@ -67,11 +67,11 @@ ___
 - *pushed* - >=2024-01-01||<=2024-01-01||:2024-01-01
 
 ___
-
+optional (default to 100)
 - *per_page* - number of items per page (default: 100, max 100)
 
 ___
-
+optional (default to 1)
 - *page* - number of the page (default: 1)
 
 ## Examples
@@ -82,8 +82,10 @@ ___
   - <http://localhost:5000/repos?q=language:javascript+size:<=100>
 - search public repositories with the language `go` and the followers is 10 and stars is greater than 10
   - <http://localhost:5000/repos?q=language:go+followers:10+stars:>10>
-- search public repositories with the language `rust` and the size of the repository is between 1 and 10 KB and the number of stars is greater or equal to 10 and the number of followers is greater or equal to 100
-  - <http://localhost:5000/repos?q=language:rust+size:1..10+stars:>=10+followers:>=100>
+- search public repositories with the language `rust` and the size of the repository is between 1 and 10 KB and the number of stars is 10 and the number of followers is greater or equal to 100
+  - <http://localhost:5000/repos?q=language:rust+size:1..10+stars:10+followers:>=100>
+ - search public repositories with the language `rust`on page 2 with 45 items per request
+  - <http://localhost:5000/repos?q=language:rust&per_page=45&page=2>
 
 ⚠️ Do not forget to add the token in the `Authorization` header. ⚠️
 ## Testing
