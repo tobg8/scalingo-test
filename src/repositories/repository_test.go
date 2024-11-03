@@ -23,7 +23,7 @@ func TestNewGitHubRepository(t *testing.T) {
 
 type testCase struct {
 	endpoint       string
-	queryParam     string
+	rsp            *models.RepositorySearchParams
 	mockResponse   string
 	mockStatusCode int
 	mockServerFunc func(*testing.T, testCase, http.ResponseWriter, *http.Request)
@@ -59,8 +59,10 @@ func setupTestServer(t *testing.T, tt testCase) (*httptest.Server, *githubReposi
 func TestSearchRepositories(t *testing.T) {
 	tests := map[string]testCase{
 		"nominal": {
-			endpoint:   "/search/repositories",
-			queryParam: "golang",
+			endpoint: "/search/repositories",
+			rsp: &models.RepositorySearchParams{
+				Query: "golang",
+			},
 			mockResponse: `{
 				"total_count": 1,
 				"incomplete_results": false,
@@ -79,51 +81,61 @@ func TestSearchRepositories(t *testing.T) {
 				assert.Equal(t, "application/vnd.github+json", r.Header.Get("Accept"))
 				assert.Equal(t, "2022-11-28", r.Header.Get("X-GitHub-Api-Version"))
 				assert.Equal(t, tc.endpoint, r.URL.Path)
-				assert.Equal(t, tc.queryParam, r.URL.Query().Get("q"))
+				assert.Equal(t, tc.rsp.Query, r.URL.Query().Get("q"))
 				w.WriteHeader(tc.mockStatusCode)
 				fmt.Fprintln(w, tc.mockResponse)
 			},
 			wantError: assert.NoError,
 		},
 		"api error": {
-			endpoint:       "/search/repositories",
-			queryParam:     "golang",
+			endpoint: "/search/repositories",
+			rsp: &models.RepositorySearchParams{
+				Query: "golang",
+			},
 			mockResponse:   `{"message": "API rate limit exceeded"}`,
 			mockStatusCode: http.StatusForbidden,
 			wantError:      assert.Error,
 		},
 		"empty query": {
-			endpoint:       "/search/repositories",
-			queryParam:     "",
+			endpoint: "/search/repositories",
+			rsp: &models.RepositorySearchParams{
+				Query: "",
+			},
 			mockResponse:   `{"message": "Validation Failed"}`,
 			mockStatusCode: http.StatusUnprocessableEntity,
 			wantError:      assert.Error,
 		},
 		"invalid json response": {
-			endpoint:       "/search/repositories",
-			queryParam:     "golang",
+			endpoint: "/search/repositories",
+			rsp: &models.RepositorySearchParams{
+				Query: "golang",
+			},
 			mockResponse:   `{invalid json}`,
 			mockStatusCode: http.StatusOK,
 			wantError:      assert.Error,
 		},
 		"network error": {
-			endpoint:   "/search/repositories",
-			queryParam: "golang",
-			wantError:  assert.Error,
+			endpoint: "/search/repositories",
+			rsp: &models.RepositorySearchParams{
+				Query: "golang",
+			},
+			wantError: assert.Error,
 			mockServerFunc: func(t *testing.T, tc testCase, w http.ResponseWriter, r *http.Request) {
 				panic("network error")
 			},
 		},
 		"invalid url": {
-			endpoint:   "/search/repositories",
-			queryParam: "golang",
-			wantError:  assert.Error,
+			endpoint: "/search/repositories",
+			rsp: &models.RepositorySearchParams{
+				Query: "golang",
+			},
+			wantError: assert.Error,
 			mockServerFunc: func(t *testing.T, tc testCase, w http.ResponseWriter, r *http.Request) {
 				repo := &githubRepository{
 					baseURL:    "://invalid-url",
 					httpClient: &http.Client{},
 				}
-				_, err := repo.SearchRepositories(tc.queryParam, "100", "1", "")
+				_, err := repo.SearchRepositories(tc.rsp)
 				assert.Error(t, err)
 			},
 		},
@@ -136,7 +148,7 @@ func TestSearchRepositories(t *testing.T) {
 					baseURL:    "://invalid-url",
 					httpClient: &http.Client{},
 				}
-				_, err := repo.SearchRepositories(tt.queryParam, "100", "1", "")
+				_, err := repo.SearchRepositories(tt.rsp)
 				tt.wantError(t, err)
 				return
 			}
@@ -144,7 +156,7 @@ func TestSearchRepositories(t *testing.T) {
 			server, repo := setupTestServer(t, tt)
 			defer server.Close()
 
-			result, err := repo.SearchRepositories(tt.queryParam, "100", "1", "")
+			result, err := repo.SearchRepositories(tt.rsp)
 			tt.wantError(t, err)
 
 			if tt.mockStatusCode == http.StatusOK && err == nil {
@@ -168,8 +180,10 @@ func TestSearchRepositories(t *testing.T) {
 func TestGetLanguages(t *testing.T) {
 	tests := map[string]testCase{
 		"nominal": {
-			endpoint:   "/repos/scalingo/scalingo-test/languages",
-			queryParam: "scalingo/scalingo-test",
+			endpoint: "/repos/scalingo/scalingo-test/languages",
+			rsp: &models.RepositorySearchParams{
+				Query: "scalingo/scalingo-test",
+			},
 			mockResponse: `{
 				"Go": 123456,
 				"JavaScript": 89012,
@@ -179,44 +193,54 @@ func TestGetLanguages(t *testing.T) {
 			wantError:      assert.NoError,
 		},
 		"repository not found": {
-			endpoint:       "/repos/scalingo/not-exists/languages",
-			queryParam:     "scalingo/not-exists",
+			endpoint: "/repos/scalingo/not-exists/languages",
+			rsp: &models.RepositorySearchParams{
+				Query: "scalingo/not-exists",
+			},
 			mockResponse:   `{"message": "Not Found"}`,
 			mockStatusCode: http.StatusNotFound,
 			wantError:      assert.Error,
 		},
 		"api error": {
-			endpoint:       "/repos/scalingo/scalingo-test/languages",
-			queryParam:     "scalingo/scalingo-test",
+			endpoint: "/repos/scalingo/scalingo-test/languages",
+			rsp: &models.RepositorySearchParams{
+				Query: "scalingo/scalingo-test",
+			},
 			mockResponse:   `{"message": "API rate limit exceeded"}`,
 			mockStatusCode: http.StatusForbidden,
 			wantError:      assert.Error,
 		},
 		"invalid json response": {
-			endpoint:       "/repos/scalingo/scalingo-test/languages",
-			queryParam:     "scalingo/scalingo-test",
+			endpoint: "/repos/scalingo/scalingo-test/languages",
+			rsp: &models.RepositorySearchParams{
+				Query: "scalingo/scalingo-test",
+			},
 			mockResponse:   `{invalid json}`,
 			mockStatusCode: http.StatusOK,
 			wantError:      assert.Error,
 		},
 		"network error": {
-			endpoint:   "/repos/scalingo/scalingo-test/languages",
-			queryParam: "scalingo/scalingo-test",
-			wantError:  assert.Error,
+			endpoint: "/repos/scalingo/scalingo-test/languages",
+			rsp: &models.RepositorySearchParams{
+				Query: "scalingo/scalingo-test",
+			},
+			wantError: assert.Error,
 			mockServerFunc: func(t *testing.T, tc testCase, w http.ResponseWriter, r *http.Request) {
 				panic("network error")
 			},
 		},
 		"invalid url": {
-			endpoint:   "/repos/scalingo/scalingo-test/languages",
-			queryParam: "scalingo/scalingo-test",
-			wantError:  assert.Error,
+			endpoint: "/repos/scalingo/scalingo-test/languages",
+			rsp: &models.RepositorySearchParams{
+				Query: "scalingo/scalingo-test",
+			},
+			wantError: assert.Error,
 			mockServerFunc: func(t *testing.T, tc testCase, w http.ResponseWriter, r *http.Request) {
 				repo := &githubRepository{
 					baseURL:    "://invalid-url",
 					httpClient: &http.Client{},
 				}
-				_, err := repo.GetLanguages(tc.queryParam, "")
+				_, err := repo.GetLanguages(tc.rsp.Query, "")
 				assert.Error(t, err)
 			},
 		},
@@ -229,7 +253,7 @@ func TestGetLanguages(t *testing.T) {
 					baseURL:    "://invalid-url",
 					httpClient: &http.Client{},
 				}
-				_, err := repo.GetLanguages(tt.queryParam, "")
+				_, err := repo.GetLanguages(tt.rsp.Query, "")
 				tt.wantError(t, err)
 				return
 			}
@@ -237,7 +261,7 @@ func TestGetLanguages(t *testing.T) {
 			server, repo := setupTestServer(t, tt)
 			defer server.Close()
 
-			languages, err := repo.GetLanguages(tt.queryParam, "")
+			languages, err := repo.GetLanguages(tt.rsp.Query, "")
 			tt.wantError(t, err)
 
 			if tt.mockStatusCode == http.StatusOK && err == nil {

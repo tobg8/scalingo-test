@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"github.com/Scalingo/sclng-backend-test-v1/src/models"
 	"github.com/Scalingo/sclng-backend-test-v1/src/usecases"
 )
 
@@ -32,8 +34,14 @@ func renderError(w http.ResponseWriter, status int, message string) {
 }
 
 func (rc *RepositoryController) SearchRepositories(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("q")
+	header := r.Header.Get("Authorization")
+	err := validateHeader(&header)
+	if err != nil {
+		renderError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
 
+	query := r.URL.Query().Get("q")
 	language, err := rc.ru.ValidateQuery(query)
 	if err != nil {
 		renderError(w, http.StatusBadRequest, err.Error())
@@ -49,14 +57,15 @@ func (rc *RepositoryController) SearchRepositories(w http.ResponseWriter, r *htt
 		return
 	}
 
-	header := r.Header.Get("Authorization")
-	err = validateHeader(&header)
-	if err != nil {
-		renderError(w, http.StatusUnauthorized, err.Error())
-		return
+	params := models.RepositorySearchParams{
+		Query:    query,
+		PerPage:  perPage,
+		Page:     page,
+		Header:   header,
+		Language: language,
 	}
 
-	repos, err := rc.ru.SearchRepositories(query, language, perPage, page, header)
+	repos, err := rc.ru.SearchRepositories(&params)
 	if err != nil {
 		renderError(w, http.StatusBadRequest, err.Error())
 		return
@@ -90,13 +99,13 @@ func validatePagination(perPage, page *string) error {
 }
 
 func validateHeader(h *string) error {
-	if len(*h) <= 7 || (*h)[:7] != "Bearer " {
-		return fmt.Errorf("invalid Authorization header format, must be 'Bearer 'token' ")
+	if h == nil || *h == "" {
+		return fmt.Errorf("missing Authorization header")
 	}
 
-	token := (*h)[7:]
-	if token == "" {
-		return fmt.Errorf("empty token provided")
+	parts := strings.Split(*h, " ")
+	if len(parts) != 2 || parts[0] != "Bearer" || parts[1] == "" {
+		return fmt.Errorf("invalid Authorization header format, must be 'Bearer token'")
 	}
 
 	return nil

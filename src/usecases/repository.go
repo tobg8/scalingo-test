@@ -14,7 +14,7 @@ import (
 
 // RepositoryUseCase is the interface for the repository use case
 type RepositoryUseCase interface {
-	SearchRepositories(query, language, perPage, page, header string) (*models.RepositorySearchResponse, error)
+	SearchRepositories(rsp *models.RepositorySearchParams) (*models.RepositorySearchResponse, error)
 	ValidateQuery(query string) (language string, err error)
 }
 
@@ -30,8 +30,8 @@ func NewRepositoryUseCase(gr repositories.GitHubRepository) RepositoryUseCase {
 }
 
 // SearchRepositories searches repositories and fetches their languages concurrently
-func (ru *repositoryUseCase) SearchRepositories(q, language, perPage, page, header string) (*models.RepositorySearchResponse, error) {
-	repos, err := ru.gr.SearchRepositories(q, perPage, page, header)
+func (ru *repositoryUseCase) SearchRepositories(rsp *models.RepositorySearchParams) (*models.RepositorySearchResponse, error) {
+	repos, err := ru.gr.SearchRepositories(rsp)
 	if err != nil {
 		log.Print("error searching repositories: ", err)
 		return nil, err
@@ -51,7 +51,7 @@ func (ru *repositoryUseCase) SearchRepositories(q, language, perPage, page, head
 		go func() {
 			defer wg.Done()
 
-			languages, err := ru.gr.GetLanguages(repo.FullName, header)
+			languages, err := ru.gr.GetLanguages(repo.FullName, rsp.Header)
 			if err != nil {
 				log.Print("error fetching languages for ", repo.FullName, ": ", err)
 				errChan <- fmt.Errorf("error fetching languages for %s: %w", repo.FullName, err)
@@ -60,7 +60,7 @@ func (ru *repositoryUseCase) SearchRepositories(q, language, perPage, page, head
 
 			// Filter languages to only keep the requested language
 			filteredLanguages := make(models.Languages)
-			queryLanguage := strings.ToUpper(language)
+			queryLanguage := strings.ToUpper(rsp.Language)
 
 			// Convert and check each language from the repo
 			for repoLang, langBytes := range languages {
@@ -91,8 +91,8 @@ func (ru *repositoryUseCase) SearchRepositories(q, language, perPage, page, head
 	return &models.RepositorySearchResponse{
 		TotalCount:        repos.TotalCount,
 		Count:             len(clientRepos),
-		PerPage:           perPage,
-		Page:              page,
+		PerPage:           rsp.PerPage,
+		Page:              rsp.Page,
 		IncompleteResults: repos.IncompleteResults,
 		Items:             clientRepos,
 	}, nil
