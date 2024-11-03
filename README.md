@@ -21,7 +21,7 @@ Authorization: Bearer `your_token`
 ## Points to consider
 
 - The request MUST contain a `language` query parameter, this is the point to me, do a search public repositories on a specific language.
-- The response IS paginated, 100 repositories per page (but can be more or less, *per_page* parameter)
+- The response IS paginated, 100 repositories per page (but can be less, *per_page* parameter)
 
 ## Usage of API
 
