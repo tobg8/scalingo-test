@@ -2,12 +2,12 @@
 
 ## Before running the project
 
-- Create a `.env` file with the `GITHUB_TOKEN` environment variable
- This is needed because we crush github api rate limit quickly using go multithreading.
+- We need a github token to run the project, this is needed because we crush github api rate limit quickly using go multithreading.
 
- To get a token, go to <https://github.com/settings/tokens> and generate a token with the `public_repo` scope.
+- To get a token, go to <https://github.com/settings/tokens> and generate a token with the `public_repo` scope.
 
-You good to go running the project with `docker compose up`.
+This token must be used in any request to the API (in the `Authorization` header).
+Authorization: Bearer `your_token`
 
 ## Project requirements
 
@@ -17,9 +17,6 @@ You good to go running the project with `docker compose up`.
 - [x] Fetch repositories from the github API based on language and multiple filters
 - [x] Fetch requested language data of each repository
 - [x] Return the aggregated data in the response
-
-- [] implement the filter order
-- [] impelment the filter sort
 
 ## Points to consider
 
@@ -87,16 +84,20 @@ ___
 - search public repositories with the language `rust` and the size of the repository is between 1 and 10 KB and the number of stars is greater or equal to 10 and the number of followers is greater or equal to 100
   - <http://localhost:5000/repos?q=language:rust+size:1..10+stars:>=10+followers:>=100>
 
+⚠️ Do not forget to add the token in the `Authorization` header. ⚠️
+
 ## Project structure
 
 I do use the clean architecture pattern, so the project is divided into 4 layers in the `src` folder:
 
 - `controllers` contains the handlers for the API endpoints.
-- `repositories` contains the implementation of the repository interface.
-- `usecases` contains the business logic of the API.
-- `models` contains the data models of the API.
+- `repositories` contains the implementation of the repository interface (the data layer, infra, db ...).
+- `usecases` contains the business logic of the API (validate of query mainly).
+- `models` contains the data models of the API (the models of the data in repository).
 
 You can find the entry point of the API in `main.go`.
 
 Clean architecture is a pattern that helps to separate the concerns of the application, it helps to make the code more testable and more maintainable, allowing to write unit tests easily and perform mocking easily.
 This pattern is usefull for separation of concerns, it helps to make the code more modular and easier to maintain.
+
+![Description of image](./clean-archi.jpeg)
