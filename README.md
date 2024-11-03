@@ -40,7 +40,7 @@ a simple query looks like this:
 
 I did not implement all filters, but most of them are supported, the rest can be implemented easily [Filters available](#filter-support).
 
-⚠️ I did not implement a check of  of `license` and `language` filters validity, so if you provide a wrong license of language filter, it will return a poor error message, I should the fetch the data from github to check if the license or language is valid and make a proper error message. ⚠️
+⚠️ I did not implement a check of  of `license` and `language` filters validity, so if you provide a wrong license of language filter, it will return a poor error message, I should the fetch the data from github to check if the license or language is valid and make a proper error message. (or create a map of valid licenses and languages) but this is hacky and won't allow us to scale accordingly with the api ⚠️
 
 The APi offers only one endpoint:
 

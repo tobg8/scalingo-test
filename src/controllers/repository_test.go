@@ -51,7 +51,7 @@ func TestSearchRepositoriesEndpoint(t *testing.T) {
 				m.On("ValidateQuery", "golang").Return("go", nil)
 				m.On("SearchRepositories", "golang", "go", "100", "1").Return(&models.RepositorySearchResponse{}, errors.New("usecase error"))
 			},
-			expectedStatus: http.StatusInternalServerError,
+			expectedStatus: http.StatusBadRequest,
 		},
 		"missing query, return error": {
 			endpoint: "/repositories/search",
