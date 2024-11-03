@@ -86,6 +86,10 @@ ___
   - <http://localhost:5000/repos?q=language:rust+size:1..10+stars:>=10+followers:>=100>
 
 ⚠️ Do not forget to add the token in the `Authorization` header. ⚠️
+## Testing
+
+all the code is tested, and we get close to 100% coverage.
+Each layer are tested using mocks for "childs" layer but the repository layer should be tested with a real infra environment but this takes time so i did a naive testing approach -> testing my code only
 
 ## Project structure
 
