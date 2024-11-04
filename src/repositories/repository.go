@@ -37,7 +37,8 @@ func (gr *githubRepository) doRequest(endpoint string, header string, result int
 		return fmt.Errorf("error creating request: %w", err)
 	}
 
-	// Add GitHub API headers
+	// Settings recommended by github
+	// https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28#search-repositories--parameters
 	req.Header.Add("Accept", "application/vnd.github+json")
 	req.Header.Add("X-GitHub-Api-Version", "2022-11-28")
 	req.Header.Add("Authorization", header)
