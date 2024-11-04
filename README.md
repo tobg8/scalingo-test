@@ -84,10 +84,11 @@ optional (default to 1)
   - <http://localhost:5000/repos?q=language:go+followers:10+stars:>10>
 - search public repositories with the language `rust` and the size of the repository is between 1 and 10 KB and the number of stars is 10 and the number of followers is greater or equal to 100
   - <http://localhost:5000/repos?q=language:rust+size:1..10+stars:10+followers:>=100>
- - search public repositories with the language `rust`on page 2 with 45 items per request
+- search public repositories with the language `rust`on page 2 with 45 items per request
   - <http://localhost:5000/repos?q=language:rust&per_page=45&page=2>
 
 ⚠️ Do not forget to add the token in the `Authorization` header. ⚠️
+
 ## Testing
 
 all the code is tested, and we get close to 100% coverage.
@@ -102,9 +103,12 @@ I do use the clean architecture pattern, so the project is divided into 4 layers
 - `usecases` contains the business logic of the API (validate of query mainly).
 - `models` contains the data models of the API (the models of the data in repository).
 
+Each layer can access to the inner layers but not the opposite.
+
 You can find the entry point of the API in `main.go`.
 
 Clean architecture is a pattern that helps to separate the concerns of the application, it helps to make the code more testable and more maintainable, allowing to write unit tests easily and perform mocking easily.
 This pattern is usefull for separation of concerns, it helps to make the code more modular and easier to maintain.
 
-![Description of image](./clean-archi.jpeg)
+![Clean architecture](./docs/clean-archi.jpeg)
+![Project schema](./docs/architecture-schema-scalingo-test.png)
