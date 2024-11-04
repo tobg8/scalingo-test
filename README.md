@@ -111,4 +111,4 @@ Clean architecture is a pattern that helps to separate the concerns of the appli
 This pattern is usefull for separation of concerns, it helps to make the code more modular and easier to maintain.
 
 ![Clean architecture](./docs/clean-archi.jpeg)
-![Project schema](./docs/architecture-schema-scalingo-test.png)
+![Project schema](./docs/archi-schema.png)
