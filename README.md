@@ -30,7 +30,7 @@ The API uses the same filters as the one used in github API.
 
 a simple query looks like this:
 
-<http://localhost:5000/repos?q=language:javascript:size:1..10>
+<http://localhost:5000/repos?q=language:javascript+size:1..10>
 
 - a filter is a key:value pair, the key is the filter name and the value is a combination of operator + value (can be a range, a number, a date, etc combined with a : or <: or >: etc...).
 - the `+` character is used to separate filters.
